@@ -1,21 +1,69 @@
 // Code by Jonathan Cooke.
 
-const int fbmtr[] = {2,3};
+
+// Before anything more is said, let's define some axes:
+
+// (From the player's perpective)
+
+// The X axis moves the claw assembly LEFT/RIGHT
+// The Y axis moves the claw assembly FORWARD/BACKWARD
+// The Z axis moves the claw assemble UP/DOWN
+
+// I/O pins that the motors, relays, push buttons, etc are connected to
+
+// X axis
+
 const int lrmtr[] = {4,5};
+
+// Y axis
+
+const int fbmtr[] = {2,3};
+
+// Z axis
+
 const int udmtr[] = {6,7};
+
+// Electromagnetic coil
+
 const int coil[] = {8,9};
-const int fb = 30;
+
+// Limit switches for X, Y and Z axes
+
+
 const int lr = 31;
+const int fb = 30;
 const int ud = 32;
+
+// Forward push button
+
 const int forb = 33;
+
+// Right push button
+
 const int rightb = 34;
+
+// Coin acceptor
+
 const int coin = 35;
+
+// Old cabinet light switch that now controls the difficulty
+// If this switch's contacts are CLOSED then the claw will close with full power every time 
+
 const int dif = 36;
+
+// Generate a random number 
+
 const int n = random(0,4);
 static int wonInRow = 0;
+
+
+// Setup function that is called once when turning on the microcontroller
  
 void setup() 
 { 
+  
+  // Define some I/O on the board
+  
   // F/B motor relays
   pinMode(fbmtr[0], OUTPUT);
   pinMode(fbmtr[1], OUTPUT);
@@ -34,10 +82,7 @@ void setup()
   //pinMode(10, OUTPUT);
   
   
-  /* 
-  limit switches will read low
-  when they are not in home position
-  */
+  // These limit switches will read LOW when an axis is not homed
   
  
   // F/B limit switch
@@ -52,10 +97,7 @@ void setup()
   pinMode(ud, INPUT);
   digitalWrite(ud,HIGH);
   
-  /*
-  buttons/acceptor will read low when
-  they are pushed/activated
-  */
+  // Thsee buttons and switches will read LOW when they are pushed
   
   // forward button
   pinMode(forb, INPUT);
@@ -73,17 +115,39 @@ void setup()
   pinMode(dif, INPUT);
   digitalWrite(dif, HIGH);
   
+  // Cut power to the coild
+  
   openClaw();
+  
+  // Home the claw
+  
   gotoHome();
+  
+  // Propagation delay
+  
   delay(500);
 }
 
 void loop() 
 { 
+  
+  // Wait until a coin is inserted (electricity isn't free)
+  
+  // This is commented out for now because the coin acceptor is not connected
+  
  //waitForCoin(); 
+ 
+ // Wait for the user to push the buttons and move the claw
+ 
  waitAndDoButtonInput();
+ 
+ // Lower the claw, put power to the coil and start moving to the prize drop
+ 
  grabSequence();
 }
+
+
+// This function cuts power from the electromagnetic coil on the claw 
 
 void openClaw()
 {
@@ -96,6 +160,13 @@ void openClaw()
     digitalWrite(coil[0], LOW);
   }
 }
+
+
+// This function applies power to the claw coil and how much power to supply
+// Currently there are 2 power settings: one is through a physically adjustable potentiometer and the other is full power
+// This function generates a random number to decide if full power should be supplied or not and makes sure full power is never supplied more than 2 times in a row
+// There is also a boolean value that the function takes; if this boolean value is true, the coil will be supplied with full power no matter what
+// If the boolean is false, it lets the random number generator decide
 
 void closeClaw(bool win)
 {
