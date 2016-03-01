@@ -62,6 +62,8 @@ const int rightbLED = 13;
 const int n = random(0,4);
 static int wonInRow = 0;
 
+// Notes to play song
+
 
 // NB: ALL NOTES DEFINED WITH STANDARD ENGLISH NAMES, EXCEPT FROM "A" 
 //THAT IS CALLED WITH THE ITALIAN NAME "LA" BECAUSE A0,A1...ARE THE ANALOG PINS ON ARDUINO.
@@ -174,6 +176,8 @@ static int wonInRow = 0;
 #define S Q/4 // sixteenth 1/16
 #define W 4*Q // whole 4/4
 
+// Buzzer
+
 const int buzzer = 10;
 
 // Setup function that is called once when turning on the microcontroller
@@ -244,6 +248,8 @@ void setup()
   pinMode(dif, INPUT);
   digitalWrite(dif, HIGH);
   
+  // buzzer
+  
   pinMode(buzzer, OUTPUT);
   
   // Cut power to the coil
@@ -291,6 +297,8 @@ void openClaw()
   }
 }
 
+// The following function is about to get a major change with
+// the addition of a distance sensor.
 
 // This function applies power to the claw coil and how much power to supply
 // Currently there are 2 power settings: one is through a physically adjustable potentiometer and the other is full power
@@ -535,6 +543,9 @@ void waitForCoin()
   }
 }
 
+
+// Interrupt function to allow multiple processes to run simultaneously
+
 boolean cycleCheck(unsigned long *lastMillis, unsigned int cycle) 
 {
  unsigned long currentMillis = millis();
@@ -546,6 +557,9 @@ boolean cycleCheck(unsigned long *lastMillis, unsigned int cycle)
  else
    return false;
 }
+
+// Wait for the user to activate the push buttons and move
+// the claw assembly accordingly
 
 void waitAndDoButtonInput()
 {
@@ -589,6 +603,8 @@ void waitAndDoButtonInput()
  delay(200); 
 }
 
+// Close claw, home all axes, open claw
+
 void grabSequence()
 {
  if(digitalRead(dif) == LOW)
@@ -604,6 +620,8 @@ void grabSequence()
  openClaw();
  delay(500);
 }
+
+// Victory song
 
 void playSong(int p)
 {
@@ -621,11 +639,16 @@ void playSong(int p)
   note(p, C7, Q);
 }
 
+// Play a note
+
 void note(int p, float n, float l)
 {
   tone(p, n, l);
   delay(1+l);
 }
+
+// Homing function for X and Y axes;
+// homes them simultaneously
 
 void homeXY(bool x, bool y)
 {
