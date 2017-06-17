@@ -1,6 +1,5 @@
 // Code by Jonathan Cooke.
 
-
 // Before anything more is said, let's define some axes:
 
 // (From the player's perpective)
@@ -24,6 +23,7 @@ const int fbmtr[] = {2,3};
 const int udmtr[] = {6,7};
 
 // Electromagnetic coil
+// coil[0] is power & coil[1] is grip strength
 
 const int coil[] = {8,9};
 
@@ -56,14 +56,21 @@ const int dif = 36;
 const int forbLED = 12;
 const int rightbLED = 13;
 
+// Sharp Distance Sensor 
 
-// Generate a random number 
+const int distanceSensor = 0;
 
-const int n = random(0,4);
-static int wonInRow = 0;
+// Win/loss stats
 
-// Notes to play song
+int totalPlays = 1;
+int wins = 1;
+int consecutiveWins = 0;
+const int payoutTarget = 10;
+bool payoutExceeded = true;
 
+// Buzzer
+
+const int buzzer = 10;
 
 // NB: ALL NOTES DEFINED WITH STANDARD ENGLISH NAMES, EXCEPT FROM "A" 
 //THAT IS CALLED WITH THE ITALIAN NAME "LA" BECAUSE A0,A1...ARE THE ANALOG PINS ON ARDUINO.
@@ -176,15 +183,10 @@ static int wonInRow = 0;
 #define S Q/4 // sixteenth 1/16
 #define W 4*Q // whole 4/4
 
-// Buzzer
-
-const int buzzer = 10;
-
 // Setup function that is called once when turning on the microcontroller
  
 void setup() 
 { 
-  
   // Define some I/O on the board
   
   // F/B motor relays
@@ -248,10 +250,14 @@ void setup()
   pinMode(dif, INPUT);
   digitalWrite(dif, HIGH);
   
+  // distance sensor
+  pinMode(distanceSensor, INPUT);
+  
   // buzzer
   
   pinMode(buzzer, OUTPUT);
-  
+  digitalWrite(buzzer, LOW);
+
   // Cut power to the coil
   
   openClaw();
@@ -267,6 +273,7 @@ void setup()
 
 void loop() 
 { 
+  
   // Wait until a coin is inserted (electricity isn't free)
   
   // This is commented out for now because the coin acceptor is not connected
@@ -280,8 +287,27 @@ void loop()
  // Lower the claw, put power to the coil and start moving to the prize drop
  
  grabSequence();
+ 
+ evaluatePayout();
 }
 
+void evaluatePayout()
+{
+  ++totalPlays;
+  int payoutReal = wins*100/totalPlays;
+  if(payoutReal > payoutTarget || consecutiveWins > 3)
+  {
+    payoutExceeded = true;
+    if(consecutiveWins > 3)
+    {
+      consecutiveWins = 0;
+    }
+  }
+  else
+  {
+    payoutExceeded = false;
+  }
+}
 
 // This function cuts power from the electromagnetic coil on the claw 
 
@@ -297,56 +323,17 @@ void openClaw()
   }
 }
 
-// The following function is about to get a major change with
-// the addition of a distance sensor.
-
-// This function applies power to the claw coil and how much power to supply
-// Currently there are 2 power settings: one is through a physically adjustable potentiometer and the other is full power
-// This function generates a random number to decide if full power should be supplied or not and makes sure full power is never supplied more than 2 times in a row
-// There is also a boolean value that the function takes; if this boolean value is true, the coil will be supplied with full power no matter what
-// If the boolean is false, it lets the random number generator decide
-
 void closeClaw(bool win)
 {
-  if(!win && wonInRow < 2)
+  if(win || !payoutExceeded)
   {
-    int i = random(0,4);
-    if(i == n)
-    {
-      if(digitalRead(coil[1]) != LOW)
-      {
-        digitalWrite(coil[1], LOW);
-      }
-      ++wonInRow;
-    }
-    else
-    {
-      if(digitalRead(coil[1]) != HIGH)
-      {
-        digitalWrite(coil[1], HIGH);
-      }
-      wonInRow = 0;
-    }
-  }
-  else if(wonInRow >= 2)
-  {
-    if(digitalRead(coil[1]) != HIGH)
-      {
-        digitalWrite(coil[1], HIGH);
-      }
-      wonInRow = 0;
+    digitalWrite(coil[1], LOW);
   }
   else
   {
-    if(digitalRead(coil[1]) != LOW)
-      {
-        digitalWrite(coil[1], LOW);
-      }
+     digitalWrite(coil[1], HIGH);
   }
-  if(digitalRead(coil[0]) != HIGH)
-  {
-    digitalWrite(coil[0], HIGH);
-  }
+  digitalWrite(coil[0], HIGH);
 }
 
 void moveForward(int ms)
@@ -615,36 +602,25 @@ void grabSequence()
  {
    closeClaw(false);
  }
- delay(300);
+ delay(500);
  gotoHome();
  openClaw();
- delay(500);
-}
-
-// Victory song
-
-void playSong(int p)
-{
-  note(p, D6, E);
-  note(p, E6, E);
-  note(p, F6, E);
-  note(p, B6, E);
-  note(p, D6, E);
-  note(p, E6, E);
-  note(p, F6, E);
-  note(p, LA6, E);
-  note(p, B6, E);
-  note(p, C7, E);
-  note(p, D7, E);
-  note(p, C7, Q);
-}
-
-// Play a note
-
-void note(int p, float n, float l)
-{
-  tone(p, n, l);
-  delay(1+l);
+ int previous = analogRead(distanceSensor);
+ int current = previous;
+ for(int i = 0; i < 150; ++i)
+ {
+   current = analogRead(distanceSensor);
+   if(abs(current-previous) >= 100)
+   {
+     playSong(buzzer);
+     ++wins;
+     ++consecutiveWins;
+     break;
+   }
+   previous = current;
+   delay(20);
+ }
+ delay(100);
 }
 
 // Homing function for X and Y axes;
@@ -686,7 +662,7 @@ void homeXY(bool x, bool y)
     if(digitalRead(lr) == LOW)
     {
        moveLeft(-1);
-       for(int i = 0; i < 2; ++i)
+       for(int i = 0; i < 3; ++i)
        {
          while(digitalRead(lr) == LOW)
          {}
@@ -702,7 +678,7 @@ void homeXY(bool x, bool y)
     if(digitalRead(fb) == LOW)
     {
        moveForward(-1);
-       for(int i = 0; i < 2; ++i)
+       for(int i = 0; i < 3; ++i)
        {
          while(digitalRead(fb) == LOW)
          {}
@@ -715,4 +691,24 @@ void homeXY(bool x, bool y)
     }
 }
 
+void playSong(int pin) 
+{
+  note(pin, D6, E);
+  note(pin, E6, E);
+  note(pin, F6, E);
+  note(pin, B6, E);
+  note(pin, D6, E);
+  note(pin, E6, E);
+  note(pin, F6, E);
+  note(pin, LA6, E);
+  note(pin, B6, E);
+  note(pin, C7, E);
+  note(pin, D7, E);
+  note(pin, C7, Q);
+}
 
+void note(int p, float n, float l)
+{
+  tone(p, n, l);
+  delay(1+l);
+}
